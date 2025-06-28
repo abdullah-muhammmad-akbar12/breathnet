@@ -58,6 +58,18 @@ feature_impact = pd.Series(st.session_state.inputs)
 feature_impact = feature_impact.sort_values(ascending=False)
 
 st.bar_chart(feature_impact)
+# 🧠 Top Influencing Features (XAI-style)
+st.subheader("🧠 Top Influencing VOCs (Feature Impact)")
+feature_impact = user_input.iloc[0].sort_values(ascending=False)
+
+# Bar chart of VOC values (acts like feature importance)
+st.bar_chart(feature_impact)
+
+# Simple natural explanation
+top_feature = feature_impact.index[0]
+top_value = feature_impact.iloc[0]
+st.info(f"ℹ️ The model was most influenced by **{top_feature}**, which had a value of **{top_value:.3f}**.")
+
 
 # Simple auto-explanation
 top_feature = feature_impact.index[0]
