@@ -52,6 +52,17 @@ if st.button("🔍 Predict Disease"):
     st.session_state.probabilities = probabilities.tolist()
 
     st.success(f"🧬 Predicted Disease: **{prediction}**")
+    # Feature influence (basic explanation)
+st.subheader("🧠 Top Influencing VOCs (Feature Impact)")
+feature_impact = pd.Series(st.session_state.inputs)
+feature_impact = feature_impact.sort_values(ascending=False)
+
+st.bar_chart(feature_impact)
+
+# Simple auto-explanation
+top_feature = feature_impact.index[0]
+st.info(f"ℹ️ Most influential VOC: **{top_feature}** — with value {feature_impact.iloc[0]:.3f}")
+
 
     # Confidence graph
     st.subheader("📊 Prediction Confidence by Disease")
