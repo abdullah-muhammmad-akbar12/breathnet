@@ -49,6 +49,45 @@ if st.button("🔍 Predict Disease"):
     # Show prediction
     st.success(f"🧬 Predicted Disease: **{prediction}**")
 
+    from fpdf import FPDF
+from datetime import datetime
+import base64
+
+def create_pdf(prediction, inputs):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, "BreathNet Disease Prediction Report", ln=True)
+
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(0, 10, f"Date & Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
+    pdf.cell(0, 10, f"Predicted Disease: {prediction}", ln=True)
+
+    pdf.cell(0, 10, "", ln=True)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "Input VOC Concentrations (ppm):", ln=True)
+
+    pdf.set_font("Arial", '', 12)
+    for key, value in inputs.items():
+        pdf.cell(0, 10, f"{key}: {value}", ln=True)
+
+    file_path = "BreathNet_Report.pdf"
+    pdf.output(file_path)
+    return file_path
+
+def get_pdf_download_link(file_path):
+    with open(file_path, "rb") as f:
+        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+    href = f'<a href="data:application/pdf;base64,{base64_pdf}" download="BreathNet_Report.pdf">📥 Download PDF Report</a>'
+    return href
+
+# 🧾 Generate PDF after prediction
+if st.button("📥 Generate PDF Report"):
+    inputs = user_input.iloc[0].to_dict()
+    file_path = create_pdf(prediction, inputs)
+    st.markdown(get_pdf_download_link(file_path), unsafe_allow_html=True)
+
+
     # Plot confidence graph
     st.subheader("📊 Prediction Confidence by Disease")
     prob_df = pd.DataFrame({
