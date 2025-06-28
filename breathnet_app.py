@@ -44,36 +44,35 @@ user_input = pd.DataFrame([{
 
 # Prediction button
 if st.button("🔍 Predict Disease"):
+    # Make prediction
     probabilities = model.predict_proba(user_input)[0]
     prediction = model.predict(user_input)[0]
 
+    # Store in session state
     st.session_state.prediction = prediction
     st.session_state.inputs = user_input.iloc[0].to_dict()
     st.session_state.probabilities = probabilities.tolist()
 
+    # ✅ Show prediction
     st.success(f"🧬 Predicted Disease: **{prediction}**")
-    # Feature influence (basic explanation)
-st.subheader("🧠 Top Influencing VOCs (Feature Impact)")
-feature_impact = pd.Series(st.session_state.inputs)
-feature_impact = feature_impact.sort_values(ascending=False)
 
-st.bar_chart(feature_impact)
-# 🧠 Top Influencing Features (XAI-style)
-st.subheader("🧠 Top Influencing VOCs (Feature Impact)")
-feature_impact = user_input.iloc[0].sort_values(ascending=False)
+    # ✅ Show confidence chart
+    st.subheader("📊 Prediction Confidence by Disease")
+    prob_df = pd.DataFrame({
+        'Disease': model.classes_,
+        'Confidence': probabilities
+    }).sort_values(by='Confidence', ascending=False)
+    st.bar_chart(prob_df.set_index('Disease'))
 
-# Bar chart of VOC values (acts like feature importance)
-st.bar_chart(feature_impact)
+    # ✅ Explainable AI Section
+    st.subheader("🧠 Top Influencing VOCs (Feature Impact)")
+    feature_impact = user_input.iloc[0].sort_values(ascending=False)
+    st.bar_chart(feature_impact)
 
-# Simple natural explanation
-top_feature = feature_impact.index[0]
-top_value = feature_impact.iloc[0]
-st.info(f"ℹ️ The model was most influenced by **{top_feature}**, which had a value of **{top_value:.3f}**.")
-
-
-# Simple auto-explanation
-top_feature = feature_impact.index[0]
-st.info(f"ℹ️ Most influential VOC: **{top_feature}** — with value {feature_impact.iloc[0]:.3f}")
+    # ✅ Natural explanation
+    top_feature = feature_impact.index[0]
+    top_value = feature_impact.iloc[0]
+    st.info(f"ℹ️ The model was most influenced by **{top_feature}**, which had a value of **{top_value:.3f}**.")
 
 
     # Confidence graph
