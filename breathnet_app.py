@@ -41,10 +41,22 @@ user_input = pd.DataFrame([{
     'Carbonyl_Index': carbonyl_index
 }])
 
-# Prediction
+# Make prediction + get probabilities
 if st.button("🔍 Predict Disease"):
+    probabilities = model.predict_proba(user_input)[0]
     prediction = model.predict(user_input)[0]
+
+    # Show prediction
     st.success(f"🧬 Predicted Disease: **{prediction}**")
+
+    # Plot confidence graph
+    st.subheader("📊 Prediction Confidence by Disease")
+    prob_df = pd.DataFrame({
+        'Disease': model.classes_,
+        'Confidence': probabilities
+    }).sort_values(by='Confidence', ascending=False)
+
+    st.bar_chart(prob_df.set_index('Disease'))
 
 # Show data
 st.subheader("🔬 Current Input Data")
