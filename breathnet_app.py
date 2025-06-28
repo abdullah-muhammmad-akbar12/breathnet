@@ -66,12 +66,14 @@ if st.button("🔍 Predict Disease"):
     # Show prediction
     st.success(f"🧬 Predicted Disease: **{prediction}**")
 
-    if 'prediction' in st.session_state and 'inputs' in st.session_state:
+# ✅ PDF download block (fixes IndentationError)
+if 'prediction' in st.session_state and 'inputs' in st.session_state:
     if st.button("📥 Generate PDF Report"):
         file_path = create_pdf(st.session_state.prediction, st.session_state.inputs)
         st.markdown(get_pdf_download_link(file_path), unsafe_allow_html=True)
 else:
     st.info("ℹ️ Please run a prediction first.")
+
 
 
 
