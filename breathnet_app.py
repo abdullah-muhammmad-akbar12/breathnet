@@ -64,7 +64,7 @@ if uploaded_file:
             if current_time - st.session_state.auto_last_run > 10:
                 st.session_state.auto_last_run = current_time
                 st.session_state.sensor_index += 1
-                st.experimental_rerun()
+                st.stop()  # Safe stop instead of rerun
         elif st.sidebar.button("➡️ Next Reading", key="next_button"):
             st.session_state.sensor_index += 1
             st.experimental_rerun()
