@@ -42,6 +42,31 @@ if uploaded_file:
         idx = st.session_state.sensor_index
         if idx < len(st.session_state.sensor_data):
             user_input = pd.DataFrame([st.session_state.sensor_data.iloc[idx]])
+            # 🧪 Auto-run logic: use CSV if uploaded
+if 'sensor_index' not in st.session_state:
+    st.session_state.sensor_index = 0
+
+if uploaded_file:
+    df_sensor = pd.read_csv(uploaded_file)
+    st.session_state.sensor_data = df_sensor
+
+    auto_run = st.sidebar.checkbox("🔁 Auto-Run Every 10 Seconds")
+
+    if auto_run and st.session_state.sensor_index < len(st.session_state.sensor_data):
+        user_input = pd.DataFrame([st.session_state.sensor_data.iloc[st.session_state.sensor_index]])
+        st.session_state.sensor_index += 1
+
+        st.success(f"✅ Auto-loaded row {st.session_state.sensor_index} from sensor data")
+
+        # Trigger a rerun every 10 sec
+        st.experimental_rerun()
+    elif st.sidebar.button("➡️ Next Reading"):
+        if st.session_state.sensor_index < len(st.session_state.sensor_data):
+            user_input = pd.DataFrame([st.session_state.sensor_data.iloc[st.session_state.sensor_index]])
+            st.session_state.sensor_index += 1
+            st.success(f"✅ Manually loaded row {st.session_state.sensor_index}")
+        else:
+            st.warning("🚫 No more data left in file.")
             st.session_state.sensor_index += 1
             st.success(f"✅ Auto-loaded row {idx + 1} from sensor file.")
         else:
