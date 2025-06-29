@@ -6,6 +6,8 @@ import joblib
 from fpdf import FPDF
 from datetime import datetime
 import base64
+import time
+
 
 # Title and Model
 st.set_page_config(page_title="BreathNet", layout="centered")
@@ -54,10 +56,16 @@ if uploaded_file:
     if st.session_state.sensor_index < len(df_sensor):
                user_input = pd.DataFrame([df_sensor.iloc[st.session_state.sensor_index]])
 
-    if auto_run:
-         time.sleep(10)
-         st.session_state.sensor_index += 1
-         st.experimental_rerun()
+    if auto_run and 'auto_last_run' not in st.session_state:
+    st.session_state.auto_last_run = time.time()
+
+if auto_run:
+    current_time = time.time()
+    if current_time - st.session_state.auto_last_run > 10:
+        st.session_state.auto_last_run = current_time
+        st.session_state.sensor_index += 1
+        st.experimental_rerun()
+
 
     else:
         st.warning("🚫 No more rows left in uploaded CSV.")
