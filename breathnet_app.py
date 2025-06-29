@@ -54,10 +54,10 @@ if uploaded_file:
     if st.session_state.sensor_index < len(df_sensor):
                user_input = pd.DataFrame([df_sensor.iloc[st.session_state.sensor_index]])
 
-        if auto_run:
-            time.sleep(10)
-            st.session_state.sensor_index += 1
-            st.experimental_rerun()
+    if auto_run:
+         time.sleep(10)
+         st.session_state.sensor_index += 1
+         st.experimental_rerun()
 
     else:
         st.warning("🚫 No more rows left in uploaded CSV.")
