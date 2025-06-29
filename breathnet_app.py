@@ -53,41 +53,64 @@ user_input = pd.DataFrame([{
 # Override input with simulated row if available
 if uploaded_file:
     df_sensor = pd.read_csv(uploaded_file)
-    if st.session_state.sensor_index < len(df_sensor):
-               user_input = pd.DataFrame([df_sensor.iloc[st.session_state.sensor_index]])
+    st.session_state.sensor_data = df_sensor
 
-    if auto_run and 'auto_last_run' not in st.session_state:
+    if 'sensor_index' not in st.session_state:
+        st.session_state.sensor_index = 0
+
+    if 'auto_last_run' not in st.session_state:
         st.session_state.auto_last_run = time.time()
 
-if auto_run:
-    current_time = time.time()
-    if current_time - st.session_state.auto_last_run > 10:
-        st.session_state.auto_last_run = current_time
-        st.session_state.sensor_index += 1
-        st.experimental_rerun()
+    auto_run = st.sidebar.checkbox("🔁 Auto-Run Every 10 Seconds")
 
+    # Check if there are more rows to process
+    if st.session_state.sensor_index < len(df_sensor):
+        user_input = pd.DataFrame([df_sensor.iloc[st.session_state.sensor_index]])
 
+        if auto_run:
+            current_time = time.time()
+            if current_time - st.session_state.auto_last_run > 10:
+                st.session_state.auto_last_run = current_time
+                st.session_state.sensor_index += 1
+                st.experimental_rerun()
+
+        elif st.sidebar.button("➡️ Next Reading"):
+            st.session_state.sensor_index += 1
+            st.experimental_rerun()
     else:
-        st.warning("🚫 No more rows left in uploaded CSV.")
+        st.warning("🚫 All VOC samples have been used. Please upload a new file or reset index.")
+        user_input = None  # Prevents crash below
 
-    if auto_run:
-        import time
-        time.sleep(10)
-        st.session_state.sensor_index += 1
-    elif st.sidebar.button("➡️ Next Reading"):
-        st.session_state.sensor_index += 1
-        st.success(f"✅ Loaded row {st.session_state.sensor_index} from CSV")
 
 # Prediction logic
 if st.button("🔍 Predict Disease") or auto_run:
-    probabilities = model.predict_proba(user_input)[0]
-    prediction = model.predict(user_input)[0]
+    if user_input is not None:
+        probabilities = model.predict_proba(user_input)[0]
+        prediction = model.predict(user_input)[0]
 
-    st.session_state.prediction = prediction
-    st.session_state.inputs = user_input.iloc[0].to_dict()
-    st.session_state.probabilities = probabilities.tolist()
+        st.session_state.prediction = prediction
+        st.session_state.inputs = user_input.iloc[0].to_dict()
+        st.session_state.probabilities = probabilities.tolist()
 
-    st.success(f"🧬 Predicted Disease: **{prediction}**")
+        st.success(f"🧬 Predicted Disease: **{prediction}**")
+
+        st.subheader("📊 Prediction Confidence by Disease")
+        prob_df = pd.DataFrame({
+            'Disease': model.classes_,
+            'Confidence': probabilities
+        }).sort_values(by='Confidence', ascending=False)
+        st.bar_chart(prob_df.set_index('Disease'))
+
+        st.subheader("🧠 Top Influencing VOCs (Feature Impact)")
+        feature_impact = user_input.iloc[0].sort_values(ascending=False)
+        st.bar_chart(feature_impact)
+
+        top_feature = feature_impact.index[0]
+        top_value = feature_impact.iloc[0]
+        st.info(f"ℹ️ Most influencing compound: **{top_feature} = {top_value:.3f} ppm**")
+    else:
+        st.error("❌ No valid input available for prediction.")
+
 
     # Bar chart for confidence
     st.subheader("📊 Prediction Confidence by Disease")
