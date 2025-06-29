@@ -67,7 +67,8 @@ if uploaded_file:
                 st.stop()  # Safe stop instead of rerun
         elif st.sidebar.button("➡️ Next Reading", key="next_button"):
             st.session_state.sensor_index += 1
-            st.experimental_rerun()
+            st.stop()
+
     else:
         st.warning("🚫 No more rows left. Reset or upload new file.")
         user_input = None
