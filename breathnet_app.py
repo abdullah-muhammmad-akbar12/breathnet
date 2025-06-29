@@ -57,7 +57,7 @@ if uploaded_file:
                user_input = pd.DataFrame([df_sensor.iloc[st.session_state.sensor_index]])
 
     if auto_run and 'auto_last_run' not in st.session_state:
-    st.session_state.auto_last_run = time.time()
+        st.session_state.auto_last_run = time.time()
 
 if auto_run:
     current_time = time.time()
