@@ -7,6 +7,48 @@ from fpdf import FPDF
 from datetime import datetime
 import base64
 
+# 🧪 Day 7 - Simulated Sensor Data Integration
+import time
+
+st.sidebar.markdown("---")
+st.sidebar.header("📂 Simulated Sensor Data")
+uploaded_file = st.sidebar.file_uploader("Upload VOC CSV (simulated BME688)", type=["csv"])
+
+import time
+
+# Load sensor CSV
+if uploaded_file:
+    sensor_df = pd.read_csv(uploaded_file)
+    st.session_state.sensor_data = sensor_df
+
+    # Initialize session index
+    if 'sensor_index' not in st.session_state:
+        st.session_state.sensor_index = 0
+
+    # 🟢 Auto-run mode toggle
+    st.sidebar.markdown("---")
+    auto_run = st.sidebar.checkbox("🔁 Auto-Run Every 10 Sec")
+
+    # Run next sample either manually or automatically
+    run_sample = False
+    if auto_run:
+        run_sample = True
+        time.sleep(10)  # Wait before loading next sample
+    elif st.sidebar.button("➡️ Next Reading"):
+        run_sample = True
+
+    # Load next row from CSV
+    if run_sample:
+        idx = st.session_state.sensor_index
+        if idx < len(st.session_state.sensor_data):
+            user_input = pd.DataFrame([st.session_state.sensor_data.iloc[idx]])
+            st.session_state.sensor_index += 1
+            st.success(f"✅ Auto-loaded row {idx + 1} from sensor file.")
+        else:
+            st.warning("🚫 No more data left in the CSV.")
+
+
+
 # Load model
 model = joblib.load('breathnet_model.pkl')
 
