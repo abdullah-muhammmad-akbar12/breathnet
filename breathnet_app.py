@@ -100,22 +100,27 @@ if st.button("🔍 Predict Disease"):
         f"This compound often correlates with metabolic or inflammatory changes observed in {prediction.lower()}, helping the model distinguish it from other diseases."
     )
 
-# ✅ PDF generation
-def create_pdf(pred, inputs):
+def create_pdf(prediction, inputs):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
+    pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "BreathNet Prediction Report", ln=True)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 10, f"Prediction: {pred}", ln=True)
-    pdf.cell(0, 10, f"Time: {datetime.now()}", ln=True)
-    pdf.ln()
+
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(0, 10, f"Date & Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
+    pdf.cell(0, 10, f"Predicted Disease: {prediction}", ln=True)
+    pdf.cell(0, 10, "", ln=True)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "VOC Concentrations (ppm):", ln=True)
+
+    pdf.set_font("Arial", '', 12)
     for k, v in inputs.items():
         pdf.cell(0, 10, f"{k}: {v}", ln=True)
-    buf = BytesIO()
-    pdf.output(buf)
-    buf.seek(0)
-    return buf
+
+    # ✅ Output PDF to string, encode to BytesIO manually
+    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+    return BytesIO(pdf_bytes)
+
 
 # ✅ PDF download button
 if "prediction" in st.session_state and "inputs" in st.session_state:
