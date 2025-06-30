@@ -74,6 +74,20 @@ if st.sidebar.button("➡️ Load Next Sample"):
 # Prediction block
 if st.button("🔍 Predict Disease") or st.session_state.auto_predict:
     st.session_state.auto_predict = False
+    # ✅ XAI Explanation Generator
+def explain_prediction(voc_data):
+    high_vocs = [k for k, v in voc_data.items() if v > 0.75 * max(voc_data.values())]
+    if not high_vocs:
+        return "The model did not detect unusually high levels of any specific VOCs."
+    else:
+        joined = ", ".join(high_vocs)
+        return f"The model detected unusually high levels of: **{joined}**, which contributed most to the prediction."
+
+# Show natural language explanation
+st.subheader("💬 AI Explanation")
+explanation = explain_prediction(user_input.iloc[0].to_dict())
+st.write(explanation)
+
 
     # ✅ Column alignment fix
     user_input = user_input[expected_columns]
