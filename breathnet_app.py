@@ -1,14 +1,15 @@
-# ✅ BreathNet Streamlit App (Ultimate Fixed Version)
+# ✅ BreathNet Streamlit App (Ultimate Fixed Version with XAI + Logging)
 
 import streamlit as st
 import pandas as pd
 import joblib
-from fpdf import FPDF
-from datetime import datetime
-import base64
 import time
+import base64
+import csv
+from datetime import datetime
+from fpdf import FPDF
 
-# Load AI model
+# Load trained model
 model = joblib.load("breathnet_model.pkl")
 
 # Setup
@@ -16,11 +17,14 @@ st.set_page_config(page_title="BreathNet", layout="centered")
 st.title("🫁 BreathNet: AI-Powered Disease Prediction from VOCs")
 
 # Upload CSV
-st.sidebar.markdown("---")
 st.sidebar.header("📂 Upload VOC CSV")
 uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 
-# Session state
+# VOC columns
+expected_columns = ['Acetone', 'Ethanol', 'Formaldehyde', 'Ammonia',
+                    'Isoprene', 'Hydrogen Sulfide', 'Methanol', 'Carbonyl_Index']
+
+# Initialize session
 if "sensor_index" not in st.session_state:
     st.session_state.sensor_index = 0
 if "sensor_data" not in st.session_state:
@@ -32,25 +36,25 @@ if "auto_mode" not in st.session_state:
 if "auto_predict" not in st.session_state:
     st.session_state.auto_predict = False
 
-# Expected feature order
-expected_columns = ['Acetone', 'Ethanol', 'Formaldehyde', 'Ammonia',
-                    'Isoprene', 'Hydrogen Sulfide', 'Methanol', 'Carbonyl_Index']
+# Manual input sliders
+st.sidebar.header("Manual VOC Input")
+manual_input = {
+    col: st.sidebar.slider(
+        col, 0.0, 2.0 if col == "Acetone" else 0.5,
+        1.0 if col == "Acetone" else 0.03, 0.01
+    ) for col in expected_columns
+}
+user_input = pd.DataFrame([manual_input])
 
 # Auto-run toggle
 st.sidebar.markdown("---")
 st.session_state.auto_mode = st.sidebar.checkbox("🔁 Auto-Run Every 10 Seconds")
 
-# Sliders
-st.sidebar.header("Manual VOC Input")
-manual_input = {col: st.sidebar.slider(col, 0.0, 2.0 if col == "Acetone" else 0.5, 1.0 if col == "Acetone" else 0.03, 0.01)
-                for col in expected_columns}
-user_input = pd.DataFrame([manual_input])
-
-# Load uploaded data
+# Load uploaded file
 if uploaded_file:
     st.session_state.sensor_data = pd.read_csv(uploaded_file)
 
-# Auto-run next row every 10 sec
+# Auto-run logic
 if st.session_state.sensor_data is not None and st.session_state.auto_mode:
     now = time.time()
     if now - st.session_state.last_update_time >= 10:
@@ -62,7 +66,7 @@ if st.session_state.sensor_data is not None and st.session_state.auto_mode:
             st.session_state.last_update_time = now
             st.session_state.auto_predict = True
 
-# Manual next row
+# Manual next sample
 if st.sidebar.button("➡️ Load Next Sample"):
     if st.session_state.sensor_data is not None and st.session_state.sensor_index < len(st.session_state.sensor_data):
         user_input = pd.DataFrame([
@@ -71,41 +75,61 @@ if st.sidebar.button("➡️ Load Next Sample"):
         st.session_state.sensor_index += 1
         st.session_state.auto_predict = True
 
-# Prediction block
-if st.button("🔍 Predict Disease") or st.session_state.auto_predict:
-    st.session_state.auto_predict = False
-    # ✅ XAI Explanation Generator
+# XAI Explanation Function
 def explain_prediction(voc_data):
     high_vocs = [k for k, v in voc_data.items() if v > 0.75 * max(voc_data.values())]
     if not high_vocs:
-        return "The model did not detect unusually high levels of any specific VOCs."
-    else:
-        joined = ", ".join(high_vocs)
-        return f"The model detected unusually high levels of: **{joined}**, which contributed most to the prediction."
+        return "No unusually high VOCs detected."
+    joined = ", ".join(high_vocs)
+    return f"The model was influenced most by: **{joined}**"
 
-# Show natural language explanation
-st.subheader("💬 AI Explanation")
-explanation = explain_prediction(user_input.iloc[0].to_dict())
-st.write(explanation)
-
-
-    # ✅ Column alignment fix
+# Prediction block
+if st.button("🔍 Predict Disease") or st.session_state.auto_predict:
+    st.session_state.auto_predict = False
     user_input = user_input[expected_columns]
 
     probs = model.predict_proba(user_input)[0]
     pred = model.predict(user_input)[0]
 
     st.success(f"🧬 Predicted Disease: **{pred}**")
-    st.subheader("📊 Confidence")
-    prob_df = pd.DataFrame({ "Disease": model.classes_, "Confidence": probs })
+
+    # Confidence graph
+    st.subheader("📊 Confidence by Disease")
+    prob_df = pd.DataFrame({
+        "Disease": model.classes_,
+        "Confidence": probs
+    }).sort_values(by="Confidence", ascending=False)
     st.bar_chart(prob_df.set_index("Disease"))
 
+    # Feature impact
     st.subheader("🧠 Feature Impact")
-    st.bar_chart(user_input.iloc[0].sort_values(ascending=False))
-    top_feat = user_input.iloc[0].sort_values(ascending=False).index[0]
+    feature_impact = user_input.iloc[0].sort_values(ascending=False)
+    st.bar_chart(feature_impact)
+    top_feat = feature_impact.index[0]
     st.info(f"ℹ️ Most influencing VOC: **{top_feat}**")
 
-    # PDF generation
+    # XAI explanation
+    st.subheader("💬 AI Explanation")
+    st.write(explain_prediction(user_input.iloc[0].to_dict()))
+
+    # ✅ CSV Logging
+    def log_prediction(voc_dict, prediction, prob_array):
+        with open("prediction_log.csv", "a", newline="") as file:
+            writer = csv.writer(file)
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            row = [now] + list(voc_dict.values()) + [prediction] + [f"{p:.4f}" for p in prob_array]
+            writer.writerow(row)
+
+    # Header once
+    if st.session_state.get("log_initialized") != True:
+        with open("prediction_log.csv", "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Timestamp"] + expected_columns + ["Prediction"] + [f"Conf_{cls}" for cls in model.classes_])
+        st.session_state["log_initialized"] = True
+
+    log_prediction(user_input.iloc[0].to_dict(), pred, probs)
+
+    # ✅ PDF Export
     def create_pdf(pred, inputs):
         pdf = FPDF()
         pdf.add_page()
