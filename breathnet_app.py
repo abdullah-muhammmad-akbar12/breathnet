@@ -78,10 +78,11 @@ if st.sidebar.button("➡️ Load Next Row") and st.session_state.sensor_data is
     if st.session_state.sensor_index < len(st.session_state.sensor_data):
         user_input = pd.DataFrame([st.session_state.sensor_data.iloc[st.session_state.sensor_index]])
         st.session_state.sensor_index += 1
-      user_input = user_input[expected_columns]
+     
 
 
 # ✅ Predict button
+ user_input = user_input[expected_columns]
 if st.button("🔍 Predict Disease"):
     user_input = user_input[expected_columns]
     probabilities = model.predict_proba(user_input)[0]
