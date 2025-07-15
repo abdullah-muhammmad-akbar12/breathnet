@@ -1,4 +1,4 @@
-# ✅ BreathNet Streamlit App — Final Version (PDF + CSV + XAI Fully Working)
+# ✅ BreathNet Streamlit App – Final Version (CO2 + PDF + CSV + XAI)
 
 import streamlit as st
 import pandas as pd
@@ -9,19 +9,18 @@ import base64
 import time
 from io import BytesIO, StringIO
 
-# ✅ Load model
+# ✅ Load trained ML model
 model = joblib.load("breathnet_model.pkl")
 
-# ✅ Page config
+# ✅ Define VOC features (now includes CO2)
+expected_columns = ['Acetone', 'Ethanol', 'Formaldehyde', 'Ammonia',
+                    'Isoprene', 'Hydrogen Sulfide', 'Methanol', 'CO2', 'Carbonyl_Index']
+
+# ✅ Page setup
 st.set_page_config(page_title="BreathNet", layout="centered")
 st.title("🫁 BreathNet: AI-Powered Disease Prediction from VOCs")
 
-# ✅ VOC Columns expected — MATCH model training
-expected_columns = ['Acetone', 'Ethanol', 'Formaldehyde', 'Ammonia',
-                    'Isoprene', 'Hydrogen Sulfide', 'Methanol',
-                    'Carbonyl_Index', 'CO2']
-
-# ✅ Session state init
+# ✅ Session state
 if "sensor_index" not in st.session_state:
     st.session_state.sensor_index = 0
 if "sensor_data" not in st.session_state:
@@ -29,74 +28,60 @@ if "sensor_data" not in st.session_state:
 if "prediction_log" not in st.session_state:
     st.session_state.prediction_log = []
 
-# ✅ Upload VOC CSV
+# ✅ Upload CSV file
 st.sidebar.header("📂 Upload VOC CSV")
 uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 
-# ✅ Auto-run (optional toggle)
+# ✅ Auto-run toggle
 st.sidebar.markdown("---")
 auto_mode = st.sidebar.checkbox("🔁 Auto-Load Next Row Every 10 sec")
 
-# ✅ Manual input
+# ✅ Manual input sliders (with CO2)
 st.sidebar.header("🧪 Manual VOC Input (ppm)")
-acetone = st.sidebar.slider("Acetone", 0.0, 2.0, 1.0, 0.01)
-ethanol = st.sidebar.slider("Ethanol", 0.0, 0.5, 0.2, 0.01)
-formaldehyde = st.sidebar.slider("Formaldehyde", 0.0, 0.1, 0.03, 0.001)
-ammonia = st.sidebar.slider("Ammonia", 0.0, 0.1, 0.03, 0.001)
-isoprene = st.sidebar.slider("Isoprene", 0.0, 1.5, 0.8, 0.01)
-hydrogen_sulfide = st.sidebar.slider("Hydrogen Sulfide", 0.0, 0.1, 0.03, 0.001)
-methanol = st.sidebar.slider("Methanol", 0.0, 0.1, 0.03, 0.001)
-carbonyl_index = st.sidebar.slider("Carbonyl Index", 0.0, 0.3, 0.1, 0.01)
-co2 = st.sidebar.slider("CO2", 0.0, 1.0, 0.3, 0.01)
-
 manual_input = {
-    'Acetone': acetone,
-    'Ethanol': ethanol,
-    'Formaldehyde': formaldehyde,
-    'Ammonia': ammonia,
-    'Isoprene': isoprene,
-    'Hydrogen Sulfide': hydrogen_sulfide,
-    'Methanol': methanol,
-    'Carbonyl_Index': carbonyl_index,
-    'CO2': co2
+    col: st.sidebar.slider(col, 0.0, 2.0 if col == "Acetone" else (1000.0 if col == "CO2" else 0.5),
+                           1.0 if col == "Acetone" else (400.0 if col == "CO2" else 0.03), 0.01)
+    for col in expected_columns
 }
 user_input = pd.DataFrame([manual_input])
 
-# ✅ Load uploaded CSV if available
+# ✅ Use uploaded CSV if provided
 if uploaded_file:
     st.session_state.sensor_data = pd.read_csv(uploaded_file)
 
     if st.session_state.sensor_index < len(st.session_state.sensor_data):
         user_input = pd.DataFrame([st.session_state.sensor_data.iloc[st.session_state.sensor_index]])
-        
+
         if auto_mode:
             time.sleep(10)
             st.session_state.sensor_index += 1
             st.experimental_rerun()
 
+# ✅ Load next row manually
 if st.sidebar.button("➡️ Load Next Row") and st.session_state.sensor_data is not None:
     if st.session_state.sensor_index < len(st.session_state.sensor_data):
         user_input = pd.DataFrame([st.session_state.sensor_data.iloc[st.session_state.sensor_index]])
         st.session_state.sensor_index += 1
-     
 
-
-# ✅ Predict button
+# ✅ Prediction button
 if st.button("🔍 Predict Disease"):
+    # Ensure feature column order
     user_input = user_input[expected_columns]
+
+    # Predict
     probabilities = model.predict_proba(user_input)[0]
     prediction = model.predict(user_input)[0]
 
-    # ✅ Store session
+    # Log session info
     st.session_state.prediction = prediction
     st.session_state.inputs = user_input.iloc[0].to_dict()
 
-    # ✅ Log prediction
+    # Log prediction
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     row = [timestamp] + list(user_input.iloc[0].values) + [prediction] + [f"{p:.4f}" for p in probabilities]
     st.session_state.prediction_log.append(row)
 
-    # ✅ Show result
+    # Show result
     st.success(f"🧬 Predicted Disease: **{prediction}**")
 
     st.subheader("📊 Prediction Confidence by Disease")
@@ -120,7 +105,7 @@ if st.button("🔍 Predict Disease"):
         f"This compound often correlates with metabolic or inflammatory changes observed in {prediction.lower()}, helping the model distinguish it from other diseases."
     )
 
-# ✅ PDF generation
+# ✅ PDF export
 def create_pdf(prediction, inputs):
     pdf = FPDF()
     pdf.add_page()
@@ -141,7 +126,6 @@ def create_pdf(prediction, inputs):
     pdf_bytes = pdf.output(dest='S').encode('latin-1')
     return BytesIO(pdf_bytes)
 
-# ✅ PDF download button
 if "prediction" in st.session_state and "inputs" in st.session_state:
     if st.button("📥 Generate PDF Report"):
         pdf_file = create_pdf(st.session_state.prediction, st.session_state.inputs)
@@ -162,9 +146,10 @@ if st.session_state.prediction_log:
     href = f'<a href="data:file/csv;base64,{b64_csv}" download="BreathNet_Log.csv">📥 Download CSV Log</a>'
     st.markdown(href, unsafe_allow_html=True)
 
-# ✅ Show input
+# ✅ Show current VOC input
 st.subheader("🔬 Current VOC Input")
 st.write(user_input)
+
 
 
 
