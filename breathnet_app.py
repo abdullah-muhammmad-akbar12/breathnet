@@ -82,7 +82,6 @@ if st.sidebar.button("➡️ Load Next Row") and st.session_state.sensor_data is
 
 
 # ✅ Predict button
- user_input = user_input[expected_columns]
 if st.button("🔍 Predict Disease"):
     user_input = user_input[expected_columns]
     probabilities = model.predict_proba(user_input)[0]
