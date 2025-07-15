@@ -68,33 +68,45 @@ if st.button("🔍 Predict Disease"):
     probabilities = model.predict_proba(user_input)[0]
     prediction = model.predict(user_input)[0]
 
-    st.session_state.prediction = prediction
-    st.session_state.inputs = user_input.iloc[0].to_dict()
+   # ✅ Reorder columns to match the model
+user_input = user_input[expected_columns]
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    row = [timestamp] + list(user_input.iloc[0].values) + [prediction] + [f"{p:.4f}" for p in probabilities]
-    st.session_state.prediction_log.append(row)
+# ✅ Make predictions
+try:
+    probabilities = model.predict_proba(user_input)[0]
+    prediction = model.predict(user_input)[0]
+except Exception as e:
+    st.error(f"❌ Prediction failed. Reason: {e}")
+    st.stop()
 
-    st.success(f"🧬 Predicted Disease: **{prediction}**")
+# ✅ Store session
+st.session_state.prediction = prediction
+st.session_state.inputs = user_input.iloc[0].to_dict()
 
-    st.subheader("📊 Prediction Confidence")
-    prob_df = pd.DataFrame({
-        "Disease": model.classes_,
-        "Confidence": probabilities
-    }).sort_values(by="Confidence", ascending=False)
-    st.bar_chart(prob_df.set_index("Disease"))
+# ✅ Show result
+st.success(f"🧬 Predicted Disease: **{prediction}**")
 
-    st.subheader("🧠 Feature Impact (VOC importance)")
-    impact_series = user_input.iloc[0].sort_values(ascending=False)
-    st.bar_chart(impact_series)
+st.subheader("📊 Prediction Confidence by Disease")
+prob_df = pd.DataFrame({
+    "Disease": model.classes_,
+    "Confidence": probabilities
+}).sort_values(by="Confidence", ascending=False)
+st.bar_chart(prob_df.set_index("Disease"))
 
-    top_voc = impact_series.index[0]
-    top_value = impact_series.iloc[0]
-    st.subheader("💬 AI Explanation")
-    st.markdown(
-        f"The model identified **{top_voc} = {top_value:.3f} ppm** as the most influential compound in predicting **{prediction}**.\n\n"
-        f"This compound shows correlation with metabolic or respiratory changes in patients with {prediction.lower()}."
-    )
+# ✅ Explainable AI
+st.subheader("🧠 Feature Impact (VOC importance)")
+impact_series = user_input.iloc[0].sort_values(ascending=False)
+st.bar_chart(impact_series)
+
+top_voc = impact_series.index[0]
+top_value = impact_series.iloc[0]
+
+st.subheader("💬 AI Explanation")
+st.markdown(
+    f"The model identified **{top_voc} = {top_value:.3f} ppm** as the most influential compound for predicting **{prediction}**.\n\n"
+    f"This compound often correlates with metabolic or inflammatory changes observed in {prediction.lower()}, helping the model distinguish it from other diseases."
+)
+
 
 # ✅ PDF Report Generator
 def create_pdf(prediction, inputs):
